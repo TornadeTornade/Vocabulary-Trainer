@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apprendre le vocabulaire anglais</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen">
+
+  <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+    <h1 class="text-3xl font-bold mb-4">Apprends ton vocabulaire 🇬🇧</h1>
+
+    <!-- Sélecteur de mode -->
+    <div class="mb-4">
+      <label for="modeSelect" class="block text-sm text-gray-400 mb-2">Choisis ton mode :</label>
+      <select id="modeSelect" class="w-full p-2 rounded-lg text-black text-center">
+        <option value="mix">Tout mélanger (FR ↔ EN)</option>
+        <option value="enToFr">Anglais → Français</option>
+        <option value="frToEn">Français → Anglais</option>
+      </select>
+    </div>
+
+    <!-- Sélecteur de listes -->
+    <div class="mb-4">
+      <label for="datasetSelect" class="block text-sm text-gray-400 mb-2">Choisis une liste :</label>
+      <select id="datasetSelect" class="w-full p-2 rounded-lg text-black text-center">
+        <option value="words.json">Liste par défaut</option>
+        <option value="SOUTH AFRICA vocabulary.json">South Africa vocabulary</option>
+        <option value="THE AMERICAN DRAM vocabulary.json">The American Drām vocabulary</option>
+        <option value="INDIGENOUS PRIDE vocabulary.json">Indigenous pride vocabulary</option>
+        <option value="custom" disabled>Donnée importée</option>
+      </select>
+    </div>
+
+    <div id="stats" class="text-sm text-gray-400 mb-4">Score : 0 / 0</div>
+
+    <div id="direction" class="text-gray-400 mb-2 text-sm italic"></div>
+    <div id="word" class="text-2xl font-semibold mb-6">Chargement...</div>
+
+    <input id="answer" type="text" placeholder="Écris la traduction"
+      class="w-full p-2 rounded-lg text-black mb-4 text-center outline-none focus:ring-2 focus:ring-blue-400">
+
+    <button id="checkBtn"
+      class="bg-blue-500 hover:bg-blue-600 transition text-white px-4 py-2 rounded-lg w-full mb-2 font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+      Vérifier
+    </button>
+
+    <button id="nextBtn"
+      class="bg-gray-600 hover:bg-gray-700 transition text-white px-4 py-2 rounded-lg w-full mb-2 font-semibold">
+      Mot suivant
+    </button>
+
+    <div id="feedback" class="mt-4 text-lg font-medium"></div>
+
+    <hr class="my-4 border-gray-700">
+
+    <div class="flex justify-between">
+      <button id="importBtn" class="bg-green-500 hover:bg-green-600 px-3 py-2 rounded-lg">Importer JSON</button>
+      <button id="exportBtn" class="bg-purple-500 hover:bg-purple-600 px-3 py-2 rounded-lg">Exporter JSON</button>
+    </div>
+
+    <input id="fileInput" type="file" accept=".json" class="hidden">
+
+    <div class="mt-6 text-left bg-gray-900/40 p-4 rounded-xl">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm text-gray-400 font-semibold uppercase tracking-wide">Dernières erreurs</p>
+        <button id="reviewBtn"
+          class="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-500/80 text-black disabled:opacity-40 disabled:cursor-not-allowed">
+          Réviser ces mots (0)
+        </button>
+      </div>
+      <ul id="errorsList" class="space-y-2 text-sm text-gray-300"></ul>
+      <p id="errorsEmpty" class="text-xs text-gray-500 italic">Aucune erreur pour l’instant, continue comme ça !</p>
+    </div>
+  </div>
+
+  <script>
+    let words = [];
+    let current;
+    let score = 0;
+    let total = 0;
+    let isFrToEn = true;
+    let mode = "mix"; // mode par défaut
+    let wrongAnswers = [];
+    let reviewMode = false;
+    let awaitingAnswer = true;
+    let autoNextTimeout;
+    let currentSource = 'words.json';
+    let customWords = null;
+
+    const wordEl = document.getElementById('word');
+    const answerEl = document.getElementById('answer');
+    const feedbackEl = document.getElementById('feedback');
+    const directionEl = document.getElementById('direction');
+    const checkBtn = document.getElementById('checkBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const statsEl = document.getElementById('stats');
+    const importBtn = document.getElementById('importBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const fileInput = document.getElementById('fileInput');
+    const modeSelect = document.getElementById('modeSelect');
+    const datasetSelect = document.getElementById('datasetSelect');
+    const reviewBtn = document.getElementById('reviewBtn');
+    const errorsListEl = document.getElementById('errorsList');
+    const errorsEmptyEl = document.getElementById('errorsEmpty');
+    const customOption = datasetSelect.querySelector('option[value="custom"]');
+
+    function applyWordsList(list) {
+      words = list;
+      score = 0;
+      total = 0;
+      wrongAnswers = [];
+      reviewMode = false;
+      awaitingAnswer = true;
+      updateErrorsUI();
+      updateUIStats();
+      setButtonsState();
+      nextWord();
+    }
+
+    async function loadWords(source = currentSource) {
+      currentSource = source;
+      if (source === 'custom') {
+        if (customWords) {
+          applyWordsList(customWords);
+        }
+        return;
+      }
+      let fetchedWords = [];
+      try {
+        const res = await fetch(encodeURI(source));
+        if (!res.ok) throw new Error('Liste introuvable');
+        fetchedWords = await res.json();
+      } catch {
+        fetchedWords = [
+          
+        ];
+      }
+      applyWordsList(fetchedWords);
+    }
+
+    function nextWord() {
+      clearTimeout(autoNextTimeout);
+      answerEl.value = '';
+      feedbackEl.textContent = '';
+      awaitingAnswer = true;
+      setButtonsState();
+      const sourceList = reviewMode && wrongAnswers.length ? wrongAnswers : words;
+
+      if (!sourceList.length) {
+        if (reviewMode) {
+          toggleReviewMode(false);
+          return nextWord();
+        }
+        wordEl.textContent = "Aucun mot disponible.";
+        return;
+      }
+
+      if (reviewMode && wrongAnswers.length) {
+        const pick = wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
+        current = pick.entry;
+        isFrToEn = pick.isFrToEn;
+      } else {
+        current = words[Math.floor(Math.random() * words.length)];
+
+        // Détermine la direction selon le mode
+        if (mode === "mix") {
+          isFrToEn = Math.random() < 0.5;
+        } else if (mode === "enToFr") {
+          isFrToEn = false;
+        } else if (mode === "frToEn") {
+          isFrToEn = true;
+        }
+      }
+
+      if (isFrToEn) {
+        wordEl.textContent = current.fr;
+        directionEl.textContent = "Traduis en anglais 🇬🇧";
+      } else {
+        wordEl.textContent = current.en;
+        directionEl.textContent = "Traduis en français 🇫🇷";
+      }
+
+      total++;
+      updateUIStats();
+      answerEl.focus();
+    }
+
+    function normalizeText(txt) {
+      return txt.trim().toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    }
+
+    function checkAnswer() {
+      if (!current || !awaitingAnswer) return;
+      const user = normalizeText(answerEl.value);
+      const correct = normalizeText(isFrToEn ? current.en : current.fr);
+
+      if (user === correct) {
+        feedbackEl.textContent = '✅ Correct !';
+        feedbackEl.className = 'text-green-400 font-semibold mt-4';
+        score++;
+        removeWrongAnswer(current, isFrToEn);
+        updateErrorsUI();
+        awaitingAnswer = false;
+        setButtonsState();
+        autoNextTimeout = setTimeout(() => nextWord(), 700);
+      } else {
+        feedbackEl.textContent = `❌ Mauvais — Réponse : ${isFrToEn ? current.en : current.fr}`;
+        feedbackEl.className = 'text-red-400 font-semibold mt-4';
+        registerWrongAnswer();
+      }
+      updateUIStats();
+    }
+
+    function updateUIStats() {
+      statsEl.textContent = `Score : ${score} / ${total - 1}`;
+    }
+
+    // Événements
+    checkBtn.addEventListener('click', () => checkAnswer());
+    nextBtn.addEventListener('click', () => nextWord());
+
+    function handleEnterAction() {
+      if (awaitingAnswer) {
+        checkAnswer();
+      } else {
+        nextWord();
+      }
+    }
+
+    answerEl.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      handleEnterAction();
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      if (document.activeElement === answerEl) return;
+      e.preventDefault();
+      handleEnterAction();
+    });
+    modeSelect.addEventListener('change', e => {
+      mode = e.target.value;
+      applyWordsList(words);
+    });
+
+    datasetSelect.addEventListener('change', e => {
+      const source = e.target.value;
+      if (source === 'custom' && !customWords) {
+        datasetSelect.value = currentSource;
+        return;
+      }
+      loadWords(source);
+    });
+
+    importBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        words = JSON.parse(ev.target.result);
+        customWords = words;
+        currentSource = 'custom';
+        customOption.disabled = false;
+        datasetSelect.value = 'custom';
+        applyWordsList(words);
+      };
+      reader.readAsText(file);
+    });
+
+    exportBtn.addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(words, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'words.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    reviewBtn.addEventListener('click', () => {
+      if (!wrongAnswers.length && !reviewMode) return;
+      toggleReviewMode(!reviewMode);
+    });
+
+    function registerWrongAnswer() {
+      const exists = wrongAnswers.some(item => item.entry.en === current.en && item.entry.fr === current.fr && item.isFrToEn === isFrToEn);
+      if (!exists) {
+        wrongAnswers.unshift({ entry: current, isFrToEn });
+        if (wrongAnswers.length > 10) wrongAnswers.pop();
+      }
+      updateErrorsUI();
+    }
+
+    function removeWrongAnswer(entry, direction) {
+      const idx = wrongAnswers.findIndex(item => item.entry.en === entry.en && item.entry.fr === entry.fr && item.isFrToEn === direction);
+      if (idx !== -1) {
+        wrongAnswers.splice(idx, 1);
+      }
+      if (!wrongAnswers.length && reviewMode) {
+        toggleReviewMode(false);
+      }
+    }
+
+    function updateErrorsUI() {
+      errorsListEl.innerHTML = '';
+      wrongAnswers.slice(0, 3).forEach(item => {
+        const li = document.createElement('li');
+        const directionLabel = item.isFrToEn ? 'FR → EN' : 'EN → FR';
+        li.textContent = `${directionLabel} · ${item.entry.fr} ↔ ${item.entry.en}`;
+        errorsListEl.appendChild(li);
+      });
+
+      errorsEmptyEl.classList.toggle('hidden', wrongAnswers.length > 0);
+      reviewBtn.disabled = wrongAnswers.length === 0 && !reviewMode;
+      reviewBtn.textContent = reviewMode ? `Mode révision (${wrongAnswers.length})` : `Réviser ces mots (${wrongAnswers.length})`;
+      reviewBtn.classList.toggle('bg-amber-400', reviewMode);
+      reviewBtn.classList.toggle('text-black', reviewMode);
+      reviewBtn.classList.toggle('bg-amber-500/80', !reviewMode);
+    }
+
+    function toggleReviewMode(active) {
+      reviewMode = active;
+      if (reviewMode && !wrongAnswers.length) {
+        reviewMode = false;
+        return;
+      }
+      updateErrorsUI();
+      nextWord();
+    }
+
+    function setButtonsState() {
+      checkBtn.disabled = !awaitingAnswer;
+    }
+
+    loadWords();
+    updateErrorsUI();
+    setButtonsState();
+  </script>
+</body>
+</html>
