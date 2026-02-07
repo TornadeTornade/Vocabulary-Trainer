@@ -1,4 +1,4 @@
-# 🇬🇧 Entraîneur de vocabulaire anglais
+# 🇬🇧 English Vocabulary Trainer
 
 Petit site web en **HTML / JavaScript / TailwindCSS** pour réviser efficacement son vocabulaire anglais à partir de listes de mots au format JSON.
 
