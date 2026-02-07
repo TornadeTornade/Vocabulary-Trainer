@@ -1,9 +1,9 @@
-# 🇬🇧 English Vocabulary Trainer
+# 🇬🇧 Entraîneur de vocabulaire anglais
 
 Petit site web en **HTML / JavaScript / TailwindCSS** pour réviser efficacement son vocabulaire anglais à partir de listes de mots au format JSON.
 
-L’objectif est simple :
-tu choisis une fiche de vocabulaire, le site t’affiche un mot et tu dois saisir sa traduction dans le bon sens.
+Le principe est simple :
+tu choisis une fiche de vocabulaire, le site affiche un mot et tu dois saisir sa traduction dans le bon sens.
 
 ---
 
@@ -19,23 +19,23 @@ tu choisis une fiche de vocabulaire, le site t’affiche un mot et tu dois saisi
 
 * **Import** de tes propres listes personnalisées
 
-* **Export** de ta liste actuelle
+* **Export** de la liste actuelle
 
 * Suivi du **score en temps réel**
 
 * Système de **détection des erreurs**
 
-* Mode **révision automatique** basé sur tes fautes récentes
+* Mode **révision automatique** basé sur les fautes récentes
 
 * Navigation rapide au clavier (touche **Entrée**)
 
-* Interface responsive, simple et lisible
+* Interface claire, simple et responsive
 
 ---
 
 ## 🗂️ Format des fichiers JSON
 
-Chaque liste de vocabulaire doit respecter ce format :
+Chaque liste de vocabulaire doit respecter cette structure :
 
 ```json
 [
@@ -48,20 +48,28 @@ Chaque liste de vocabulaire doit respecter ce format :
 
 ## 🚀 Lancer le projet
 
+Tu peux utiliser l’application de **deux façons différentes** :
+
+### Option 1 — Ouvrir en local
+
 Aucune installation nécessaire.
 
 1. Télécharge le projet
-2. Ouvre le fichier `index.html` dans ton navigateur
+2. Ouvre `index.html` dans ton navigateur
 
-ou utilise une extension type **Live Server**.
+ou lance-le avec un outil comme **Live Server**.
+
+### Option 2 — Utiliser le site en ligne
+
+Si le projet est hébergé sur le web, tu peux y accéder directement via le site sans rien télécharger.
 
 ---
 
 ## ➕ Ajouter une nouvelle fiche de vocabulaire
 
-1. Crée un nouveau fichier JSON en respectant le format
+1. Crée un nouveau fichier JSON en respectant le bon format
 2. Place-le dans le dossier du projet
-3. Ajoute son nom dans le `<select>` :
+3. Ajoute son nom dans le menu `<select>` :
 
 ```html
 <option value="MA_LISTE.json">Ma liste</option>
@@ -72,7 +80,7 @@ ou utilise une extension type **Live Server**.
 ## 📚 Utilisation
 
 1. Choisis le mode d’entraînement
-2. Sélectionne la fiche de mots
+2. Sélectionne une fiche de mots
 3. Traduis les mots affichés
 4. Consulte tes erreurs et active le **mode révision**
 
@@ -80,7 +88,7 @@ ou utilise une extension type **Live Server**.
 
 ## 🧠 Logique pédagogique
 
-Le site ne se contente pas d’afficher des mots aléatoires :
+Ce site ne se contente pas d’afficher des mots aléatoires :
 
 * Les fautes sont mémorisées
 * Un bouton permet de réviser uniquement les mots ratés
@@ -102,16 +110,6 @@ Cela permet une **révision ciblée et efficace**.
 ## 🎯 Objectif du projet
 
 Fournir un outil minimaliste, rapide et efficace pour apprendre du vocabulaire sans distraction, directement depuis le navigateur.
-
----
-
-## 📌 Idées d’amélioration
-
-* Sauvegarde du score en local (LocalStorage)
-* Ajout d’un minuteur
-* Gestion de synonymes multiples
-* Système de niveaux / progression
-* Interface pour créer ses listes sans passer par le JSON
 
 ---
 
